@@ -6,12 +6,12 @@ import (
 	"os/exec"
 	"strings"
 
-	//
+	//For testing purposes 
 	restclient "k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-//
+// This function executes command passed as array of strings
 func ExecuteCommandFromAnnotation(command []string) error {
 	path, err := exec.LookPath(command[0])
 	if err != nil {
@@ -28,13 +28,18 @@ func ExecuteCommandFromAnnotation(command []string) error {
 	return nil
 }
 
+//This function retrives a command section and dependencies section from k8s annotations
 func GetAnnotations(annotations map[string]string) (command []string, deps []string) {
 	command = strings.Split(annotations["command"], ",")
 	deps = strings.Split(annotations["dependencies"], ",")
+	if len(deps) == 0 {
+		return command, nil
+	}
 
 	return command, deps
 }
 
+//This function check if a service in given namespace exists
 func CheckIfServiceExists(c *client.Client, namespace string, service string) {
 
 	_, err := c.Services(namespace).Get(service)
@@ -44,6 +49,7 @@ func CheckIfServiceExists(c *client.Client, namespace string, service string) {
 	}
 }
 
+//This function check if given service has at least one endpoint active 
 func CheckEndpointsAvailabilty(c *client.Client, namespace string, service string) bool {
 
 	e, err := c.Endpoints(namespace).Get(service)
@@ -62,12 +68,14 @@ func main() {
 	podName := os.Getenv("POD_NAME")
 	namespace := os.Getenv("NAMESPACE")
 
-	// c, err := client.NewInCluster()
-	config := &restclient.Config{
-		Host: "http://127.0.0.1:8080",
-	}
-
-	c, err := client.New(config)
+	// Inside k8s POD we need to initialise client with such function
+	c, err := client.NewInCluster()
+	// For testing purposes uncomment following section and comment out above and fill Host property
+	// config := &restclient.Config{
+	// 	Host: "http://127.0.0.1:8080",
+	// }
+	// c, err := client.New(config)
+	
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -81,29 +89,30 @@ func main() {
 
 	command, deps := GetAnnotations(p.Annotations)
 
-	for {
-		pass := true
+	state := "waiting"
+	if deps == nil {
+		state = "ready"
+	}
+
+	for state == "waiting" {
+
 		for i := range deps {
 			service := strings.Trim(deps[i], " ")
-			if service == "" {
-				break
-			}
 
 			CheckIfServiceExists(c, namespace, service)
+
 			if !CheckEndpointsAvailabilty(c, namespace, service) {
-				pass = false
+				state = "waiting"
 				break
 			}
 
 			fmt.Println(service, " service has at least one running endpoint.")
-			pass = true
+			state = "ready"
 
 		}
-		if pass == true {
-			fmt.Println("All dependencies resolved.")
-			break
-		}
+
 	}
+	fmt.Println("All dependencies resolved")
 	err = ExecuteCommandFromAnnotation(command)
 	if err != nil {
 		fmt.Println(err)
