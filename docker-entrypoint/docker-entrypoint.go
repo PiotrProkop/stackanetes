@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -35,7 +34,7 @@ func ExecuteCommandFromAnnotation(command []string) error {
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
-	fmt.Println("Executing command: ", path)
+	Info.Println("Executing command: ", command)
 
 	cmd.Run()
 	return nil
@@ -57,7 +56,7 @@ func CheckIfServiceExists(c *client.Client, namespace string, service string) {
 
 	_, err := c.Services(namespace).Get(service)
 	if err != nil {
-		Error.Println("service doesn't exists in", namespace, "namespace.")
+		Error.Println(service, "service doesn't exist in", namespace, "namespace.")
 		os.Exit(1)
 	}
 }
@@ -67,11 +66,10 @@ func CheckEndpointsAvailabilty(c *client.Client, namespace string, service strin
 
 	e, err := c.Endpoints(namespace).Get(service)
 	if err != nil {
-		Error.Println("service doesn't exists in", namespace, "namespace.")
+		Error.Println(service, "service doesn't exist in", namespace, "namespace.")
 		os.Exit(1)
 	}
 	if len(e.Subsets) == 0 {
-		Info.Println(service, " service has no endpoints avaiable -> State waiting")
 		return false
 	}
 	return true
@@ -121,6 +119,7 @@ func main() {
 			CheckIfServiceExists(c, namespace, service)
 
 			if !CheckEndpointsAvailabilty(c, namespace, service) {
+				Info.Println(service, " service has no endpoints avaiable -> State waiting")
 				state = WAITING
 				break
 			}
