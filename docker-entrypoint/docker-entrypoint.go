@@ -198,7 +198,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// renderConfigWithIP("/home/pprokop/Templates/test.conf")
 	command, serviceDeps, configs := GetAnnotations(p.Annotations)
 	WaitForServiceDependency(c, namespace, serviceDeps)
 	RenderConfigs(configs)
