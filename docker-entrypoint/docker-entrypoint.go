@@ -111,19 +111,20 @@ func RenderConfigWithIP(config string) {
 		Error.Println(err)
 	}
 	params := make(map[string]string)
-	params["IP"] = GetIpFromInterface(EnvExists("INTERFACE_NAME", os.Getenv("INTERFACE_NAME")))
+	params["IP"] = GetIpFromInterface(EnvExists("INTERFACE_NAME"))
 	err = t.Execute(file, params)
 	if err != nil {
 		Error.Println(err)
 	}
 
 }
-func EnvExists(name string, env string) string {
-	if env == "" {
-		Error.Println("Environment variable ", name, " is empty")
+func EnvExists(env string) string {
+	e := os.Getenv(env)
+	if e == "" {
+		Error.Println("Environment variable ", env, " is empty")
 		os.Exit(1)
 	}
-	return env
+	return e
 }
 
 func WaitForServiceDependency(c *client.Client, namespace string, deps []string) {
@@ -173,8 +174,8 @@ func InitLogger(linfo io.Writer, lerror io.Writer) {
 
 func main() {
 	//Those envs should be set as DownwardAPI http://kubernetes.io/docs/user-guide/downward-api/
-	podName := EnvExists("POD_NAME", os.Getenv("POD_NAME"))
-	namespace := EnvExists("NAMESPACE", os.Getenv("NAMESPACE"))
+	podName := EnvExists("POD_NAME")
+	namespace := EnvExists("NAMESPACE")
 
 	//Set Logger
 	InitLogger(os.Stdout, os.Stderr)
