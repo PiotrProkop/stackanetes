@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -28,7 +29,7 @@ var (
 )
 
 // This function executes command passed as array of strings
-func ExecuteCommandFromAnnotation(command []string) error {
+func ExecuteCommand(command []string) error {
 	path, err := exec.LookPath(command[0])
 	if err != nil {
 		return err
@@ -46,88 +47,108 @@ func ExecuteCommandFromAnnotation(command []string) error {
 }
 
 //This function retrives a command section and dependencies section from k8s annotations
-func GetAnnotations(annotations map[string]string) (command []string, serviceDeps []string, configs []string) {
-	command = strings.Split(annotations["command"], " ")
-	if len(command) == 0 || command[0] == "" {
-		Error.Println("Command not specified")
-		os.Exit(1)
+func GetAnnotations(annotations map[string]string, key string, s ...string) (annotation []string) {
+	sep := ","
+	if len(s) > 0 {
+		sep = s[0]
 	}
-	serviceDeps = strings.Split(annotations["service_dependencies"], ",")
-	if len(serviceDeps) == 0 || serviceDeps[0] == "" {
-		serviceDeps = nil
+	annotation = strings.Split(annotations[key], sep)
+	if len(annotation) == 0 || annotation[0] == "" {
+		return nil
 	}
-	configs = strings.Split(annotations["configs"], ",")
-	if len(configs) == 0 || configs[0] == "" {
-		configs = nil
-	}
-	return command, serviceDeps, configs
+
+	return annotation
 }
 
 //This function check if a service in given namespace exists
-func CheckIfServiceExists(c *client.Client, namespace string, service string) {
+func CheckIfServiceExists(c *client.Client, namespace string, service string) error {
 
 	_, err := c.Services(namespace).Get(service)
 	if err != nil {
-		Error.Println(service, "service doesn't exist in", namespace, "namespace. Error:", err)
-		os.Exit(1)
+		return err
 	}
+	return nil
+}
+
+func CheckIfJobExists(c *client.Client, namespace string, job string) error {
+
+	_, err := c.ExtensionsClient.Jobs(namespace).Get(job)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //This function check if given service has at least one endpoint active
-func CheckEndpointsAvailabilty(c *client.Client, namespace string, service string) bool {
+func CheckEndpointsAvailabilty(c *client.Client, namespace string, service string) (bool, error) {
 
 	e, err := c.Endpoints(namespace).Get(service)
 	if err != nil {
-		Error.Println(service, "service doesn't exist in", namespace, "namespace. Error: ", err)
-		os.Exit(1)
+		return false, err
 	}
 	if len(e.Subsets) == 0 {
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
+}
+func IsJobComplete(c *client.Client, namespace string, job string) (bool, error) {
+	j, err := c.ExtensionsClient.Jobs(namespace).Get(job)
+	if err != nil {
+		return false, err
+	}
+	if j.Status.Succeeded == 0 {
+		return false, nil
+	}
+	return true, nil
+
 }
 
 //"GetIpFromInterface return always first ip from interface"
-func GetIpFromInterface(iface string) string {
+func GetIpFromInterface(iface string) (string, error) {
 
 	i, err := net.InterfaceByName(iface)
 	if err != nil {
-		Error.Println(iface, "interface doesn't exist. Error: ", err)
-		os.Exit(1)
+		return "", err
 	}
 	addr, err := i.Addrs()
 	if err != nil || len(addr) == 0 {
-		Error.Println(iface, " interface doesn't have ip set. Error: ", err)
-		os.Exit(1)
+		return "", err
 	}
-	return strings.Split(addr[0].String(), "/")[0]
+	return strings.Split(addr[0].String(), "/")[0], nil
 }
 
-func RenderConfigWithIP(config string) {
+func RenderConfigWithIP(config string) error {
 
 	t := template.Must(template.New(filepath.Base(config)).ParseFiles(config))
 	file, err := os.OpenFile(config, os.O_RDWR, os.ModeCharDevice)
 	if err != nil {
 		Error.Println(err)
+		return err
 	}
 	params := make(map[string]string)
-	params["IP"] = GetIpFromInterface(EnvExists("INTERFACE_NAME"))
+	iface, err := EnvExists("INTERFACE_NAME")
+	if err != nil {
+		return err
+	}
+	params["IP"], err = GetIpFromInterface(iface)
+	if err != nil {
+		return err
+	}
 	err = t.Execute(file, params)
 	if err != nil {
-		Error.Println(err)
+		return err
 	}
-
+	return nil
 }
-func EnvExists(env string) string {
+func EnvExists(env string) (string, error) {
 	e := os.Getenv(env)
 	if e == "" {
-		Error.Println("Environment variable ", env, " is empty")
-		os.Exit(1)
+		return "", fmt.Errorf("Environment variable %s is empty", env)
 	}
-	return e
+	return e, nil
 }
 
-func WaitForServiceDependency(c *client.Client, namespace string, deps []string) {
+func WaitForServiceDependency(c *client.Client, namespace string, deps []string) error {
 
 	seviceDepState := WAITING
 	if deps == nil {
@@ -140,9 +161,15 @@ func WaitForServiceDependency(c *client.Client, namespace string, deps []string)
 		for i := range deps {
 
 			service := strings.TrimSpace(deps[i])
-			CheckIfServiceExists(c, namespace, service)
-
-			if !CheckEndpointsAvailabilty(c, namespace, service) {
+			err := CheckIfServiceExists(c, namespace, service)
+			if err != nil {
+				return err
+			}
+			a, err := CheckEndpointsAvailabilty(c, namespace, service)
+			if err != nil {
+				return err
+			}
+			if !a {
 				Info.Println(service, " service has no endpoints avaiable -> State waiting")
 				seviceDepState = WAITING
 				break
@@ -152,19 +179,62 @@ func WaitForServiceDependency(c *client.Client, namespace string, deps []string)
 			seviceDepState = READY
 
 		}
-		Info.Println("All dependencies resolved")
+
 	}
+	Info.Println("All dependencies resolved")
+	return nil
 
 }
 
-func RenderConfigs(configs []string) {
+func RenderConfigs(configs []string) error {
 	if configs == nil {
 		Info.Println("Container has no configs to render")
 	}
 	for i := range configs {
-		RenderConfigWithIP(configs[i])
+		err := RenderConfigWithIP(configs[i])
+		if err != nil {
+			return err
+		}
 		Info.Println("Rendering config: ", configs[i])
 	}
+	return nil
+}
+
+func WaitForJobs(c *client.Client, namespace string, jobs []string) error {
+	jobState := WAITING
+	if jobs == nil {
+		jobState = READY
+		Info.Println("Container has no jobs dependencies")
+	}
+
+	for jobState == WAITING {
+
+		for _, job := range jobs {
+
+			j := strings.TrimSpace(job)
+			err := CheckIfJobExists(c, namespace, j)
+			if err != nil {
+				return err
+			}
+			a, err := IsJobComplete(c, namespace, j)
+			if err != nil {
+				return err
+			}
+			if !a {
+				Info.Println(j, " job is not complete -> State waiting")
+				jobState = WAITING
+				break
+			}
+
+			Info.Println(j, " job is completed -> State ready")
+			jobState = READY
+
+		}
+
+	}
+	Info.Println("All jobs dependencies resolved")
+	return nil
+
 }
 
 func InitLogger(linfo io.Writer, lerror io.Writer) {
@@ -173,12 +243,19 @@ func InitLogger(linfo io.Writer, lerror io.Writer) {
 }
 
 func main() {
-	//Those envs should be set as DownwardAPI http://kubernetes.io/docs/user-guide/downward-api/
-	podName := EnvExists("POD_NAME")
-	namespace := EnvExists("NAMESPACE")
 
 	//Set Logger
 	InitLogger(os.Stdout, os.Stderr)
+	//Those envs should be set as DownwardAPI http://kubernetes.io/docs/user-guide/downward-api/
+	podName, err := EnvExists("POD_NAME")
+	if err != nil {
+		Error.Println(err)
+	}
+	namespace, err := EnvExists("NAMESPACE")
+	if err != nil {
+		Error.Println(err)
+	}
+
 	// Inside k8s POD we need to initialise client with such function
 	c, err := client.NewInCluster()
 	// For testing purposes uncomment following section and comment out above and fill Host property
@@ -197,14 +274,36 @@ func main() {
 		Error.Println(err)
 		os.Exit(1)
 	}
-
-	command, serviceDeps, configs := GetAnnotations(p.Annotations)
-	WaitForServiceDependency(c, namespace, serviceDeps)
-	RenderConfigs(configs)
-	err = ExecuteCommandFromAnnotation(command)
+	jobs := GetAnnotations(p.Annotations, "jobs")
+	err = WaitForJobs(c, namespace, jobs)
+	if err != nil {
+		Error.Println(err)
+	}
+	serviceDeps := GetAnnotations(p.Annotations, "service_dependencies")
+	err = WaitForServiceDependency(c, namespace, serviceDeps)
+	if err != nil {
+		Error.Println(err)
+	}
+	configs := GetAnnotations(p.Annotations, "configs")
+	err = RenderConfigs(configs)
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
+	}
+
+	if os.Getenv("COMMAND") == "" {
+		command := GetAnnotations(p.Annotations, "command", " ")
+		err = ExecuteCommand(command)
+		if err != nil {
+			Error.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		err = ExecuteCommand(strings.Split(os.Getenv("COMMAND"), " "))
+		if err != nil {
+			Error.Println(err)
+			os.Exit(1)
+		}
 	}
 
 }
