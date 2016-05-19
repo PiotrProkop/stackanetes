@@ -12,7 +12,7 @@ import (
 	"text/template"
 
 	//For testing purposes
-	restclient "k8s.io/kubernetes/pkg/client/restclient"
+	// restclient "k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -42,7 +42,10 @@ func ExecuteCommand(command []string) error {
 	}
 	Info.Println("Executing command: ", command)
 
-	cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -278,11 +281,13 @@ func main() {
 	err = WaitForJobs(c, namespace, jobs)
 	if err != nil {
 		Error.Println(err)
+		os.Exit(1)
 	}
 	serviceDeps := GetAnnotations(p.Annotations, "service_dependencies")
 	err = WaitForServiceDependency(c, namespace, serviceDeps)
 	if err != nil {
 		Error.Println(err)
+		os.Exit(1)
 	}
 	configs := GetAnnotations(p.Annotations, "configs")
 	err = RenderConfigs(configs)
