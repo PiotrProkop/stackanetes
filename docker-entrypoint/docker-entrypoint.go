@@ -12,7 +12,8 @@ import (
 	"text/template"
 
 	//For testing purposes
-	// restclient "k8s.io/kubernetes/pkg/client/restclient"
+	//	restclient "k8s.io/kubernetes/pkg/client/restclient"
+
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -122,10 +123,16 @@ func GetIpFromInterface(iface string) (string, error) {
 
 func RenderConfigWithIP(config string) error {
 
-	t := template.Must(template.New(filepath.Base(config)).ParseFiles(config))
-	file, err := os.OpenFile(config, os.O_RDWR, os.ModeCharDevice)
+	err := os.MkdirAll(filepath.Dir(config), 0644)
 	if err != nil {
-		Error.Println(err)
+		return err
+	}
+	f := filepath.Base(config)
+	conf := fmt.Sprintf("/configmaps/%s/%s", f, f)
+	t := template.Must(template.New(f).ParseFiles(conf))
+
+	nconf, err := os.Create(config)
+	if err != nil {
 		return err
 	}
 	params := make(map[string]string)
@@ -137,7 +144,7 @@ func RenderConfigWithIP(config string) error {
 	if err != nil {
 		return err
 	}
-	err = t.Execute(file, params)
+	err = t.Execute(nconf, params)
 	if err != nil {
 		return err
 	}
@@ -277,7 +284,7 @@ func main() {
 		Error.Println(err)
 		os.Exit(1)
 	}
-	jobs := GetAnnotations(p.Annotations, "jobs")
+	jobs := GetAnnotations(p.Annotations, "jobs_dependencies")
 	err = WaitForJobs(c, namespace, jobs)
 	if err != nil {
 		Error.Println(err)
