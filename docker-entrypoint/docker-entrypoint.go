@@ -64,6 +64,18 @@ func GetAnnotations(annotations map[string]string, key string, s ...string) (ann
 	return annotation
 }
 
+func GetEnv(env string, s ...string) (out []string) {
+	sep := ","
+	if len(s) > 0 {
+		sep = s[0]
+	}
+	out = strings.Split(os.Getenv(env), sep)
+	if len(out) == 0 || out[0] == "" {
+		return nil
+	}
+	return out
+}
+
 //This function check if a service in given namespace exists
 func CheckIfServiceExists(c *client.Client, namespace string, service string) error {
 
@@ -141,6 +153,8 @@ func RenderConfigWithIP(config string) error {
 		return err
 	}
 	params["IP"], err = GetIpFromInterface(iface)
+	params["HOSTNAME"] = os.Getenv("HOSTNAME")
+
 	if err != nil {
 		return err
 	}
@@ -173,7 +187,9 @@ func WaitForServiceDependency(c *client.Client, namespace string, deps []string)
 			service := strings.TrimSpace(deps[i])
 			err := CheckIfServiceExists(c, namespace, service)
 			if err != nil {
-				return err
+				Info.Println(service, " doesn't exists -> State waiting")
+				seviceDepState = WAITING
+				break
 			}
 			a, err := CheckEndpointsAvailabilty(c, namespace, service)
 			if err != nil {
@@ -257,10 +273,10 @@ func main() {
 	//Set Logger
 	InitLogger(os.Stdout, os.Stderr)
 	//Those envs should be set as DownwardAPI http://kubernetes.io/docs/user-guide/downward-api/
-	podName, err := EnvExists("POD_NAME")
-	if err != nil {
-		Error.Println(err)
-	}
+	// podName, err := EnvExists("POD_NAME")
+	// if err != nil {
+	// 	Error.Println(err)
+	// }
 	namespace, err := EnvExists("NAMESPACE")
 	if err != nil {
 		Error.Println(err)
@@ -274,48 +290,43 @@ func main() {
 	// }
 	// c, err := client.New(config)
 
-	if err != nil {
-		Error.Println(err)
-		os.Exit(1)
-	}
+	// if err != nil {
+	// 	Error.Println(err)
+	// 	os.Exit(1)
+	// }
 
-	p, err := c.Pods(namespace).Get(podName)
+	// p, err := c.Pods(namespace).Get(podName)
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
 	}
-	jobs := GetAnnotations(p.Annotations, "jobs_dependencies")
+	// jobs := GetAnnotations(p.Annotations, "jobs_dependencies")
+	jobs := GetEnv("JOBS")
 	err = WaitForJobs(c, namespace, jobs)
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
 	}
-	serviceDeps := GetAnnotations(p.Annotations, "service_dependencies")
+	// serviceDeps := GetAnnotations(p.Annotations, "service_dependencies")
+	serviceDeps := GetEnv("SERVICES")
 	err = WaitForServiceDependency(c, namespace, serviceDeps)
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
 	}
-	configs := GetAnnotations(p.Annotations, "configs")
+	// configs := GetAnnotations(p.Annotations, "configs")
+	configs := GetEnv("CONFIGS")
 	err = RenderConfigs(configs)
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
 	}
 
-	if os.Getenv("COMMAND") == "" {
-		command := GetAnnotations(p.Annotations, "command", " ")
-		err = ExecuteCommand(command)
-		if err != nil {
-			Error.Println(err)
-			os.Exit(1)
-		}
-	} else {
-		err = ExecuteCommand(strings.Split(os.Getenv("COMMAND"), " "))
-		if err != nil {
-			Error.Println(err)
-			os.Exit(1)
-		}
+	command := GetEnv("COMMAND", " ")
+	err = ExecuteCommand(command)
+	if err != nil {
+		Error.Println(err)
+		os.Exit(1)
 	}
 
 }
