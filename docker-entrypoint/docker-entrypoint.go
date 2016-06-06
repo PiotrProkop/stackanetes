@@ -152,7 +152,9 @@ func RenderConfigWithIP(config string) error {
 	if err != nil {
 		return err
 	}
-	params["IP"], err = GetIpFromInterface(iface)
+	ip, err := GetIpFromInterface(iface)
+	params["IP"] = ip
+	params["IP_ERLANG"] = strings.Replace(ip, ".", ",", -1)
 	params["HOSTNAME"] = os.Getenv("HOSTNAME")
 
 	if err != nil {
@@ -172,7 +174,7 @@ func EnvExists(env string) (string, error) {
 	return e, nil
 }
 
-func WaitForServiceDependency(c *client.Client, namespace string, deps []string) error {
+func WaitForService(c *client.Client, namespace string, deps []string) error {
 
 	seviceDepState := WAITING
 	if deps == nil {
@@ -193,7 +195,9 @@ func WaitForServiceDependency(c *client.Client, namespace string, deps []string)
 			}
 			a, err := CheckEndpointsAvailabilty(c, namespace, service)
 			if err != nil {
-				return err
+				Info.Println(service, " doesn't exist -> State waiting")
+				seviceDepState = WAITING
+				break
 			}
 			if !a {
 				Info.Println(service, " service has no endpoints avaiable -> State waiting")
@@ -244,7 +248,9 @@ func WaitForJobs(c *client.Client, namespace string, jobs []string) error {
 			}
 			a, err := IsJobComplete(c, namespace, j)
 			if err != nil {
-				return err
+				Info.Println(j, " doesn't exists -> State waiting")
+				jobState = WAITING
+				break
 			}
 			if !a {
 				Info.Println(j, " job is not complete -> State waiting")
@@ -309,7 +315,7 @@ func main() {
 	}
 	// serviceDeps := GetAnnotations(p.Annotations, "service_dependencies")
 	serviceDeps := GetEnv("SERVICES")
-	err = WaitForServiceDependency(c, namespace, serviceDeps)
+	err = WaitForService(c, namespace, serviceDeps)
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
