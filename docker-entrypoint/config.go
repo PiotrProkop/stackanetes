@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 type config struct {

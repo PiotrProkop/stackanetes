@@ -43,7 +43,9 @@ func WaitFor(dep dependency, namespace string, names []string) error {
 			name := strings.TrimSpace(name)
 			err := dep.Exists(namespace, name)
 			if err != nil {
-				return err
+				Info.Println(name, " doesn't exists -> State waiting")
+				depState = WAITING
+				break
 			}
 			res, err := dep.DepResolved(namespace, name)
 			if err != nil {
