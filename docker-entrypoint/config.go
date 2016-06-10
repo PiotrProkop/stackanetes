@@ -20,14 +20,14 @@ type config struct {
 }
 
 func NewConfig() (conf *config, err error) {
-	configs := GetEnv("CONFIGS")
-	iface := GetEnv("INTERFACE_NAME")
+	configs := ConvertEnvToList("CONFIGS")
+	iface := os.Getenv("INTERFACE_NAME")
 
-	if iface == nil {
+	if iface == "" {
 		return nil, fmt.Errorf("Environment variable INTERFACE_NAME is empty")
 	}
 	conf = new(config)
-	conf.params.iface = iface[0]
+	conf.params.iface = iface
 	if configs == nil {
 		return conf, nil
 	}
@@ -65,7 +65,7 @@ func CreateDirectory(config string) error {
 
 func (conf config) RenderConfigs() error {
 	if conf.configs == nil {
-		Info.Println("Container has no configs to render")
+		return nil
 	}
 	for _, con := range conf.configs {
 		Info.Println("Rendering config: ", con)

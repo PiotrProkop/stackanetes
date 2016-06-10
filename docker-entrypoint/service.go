@@ -1,11 +1,6 @@
 package main
 
-import
-
-//For testing purposes
-//	restclient "k8s.io/kubernetes/pkg/client/restclient"
-
-client "k8s.io/kubernetes/pkg/client/unversioned"
+import client "k8s.io/kubernetes/pkg/client/unversioned"
 
 type service struct {
 	c *client.Client

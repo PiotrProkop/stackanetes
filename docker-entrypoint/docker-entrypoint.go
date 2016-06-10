@@ -8,12 +8,14 @@ import (
 	"os/exec"
 	"strings"
 	//For testing purposes
+	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
 	WAITING = "waiting"
 	READY   = "ready"
+	RUNNING = "Running"
 )
 
 var (
@@ -43,23 +45,23 @@ func WaitFor(dep dependency, namespace string, names []string) error {
 			name := strings.TrimSpace(name)
 			err := dep.Exists(namespace, name)
 			if err != nil {
-				Info.Println(name, " doesn't exists -> State waiting")
+				Info.Println(dep.GetType(), name, " doesn't exists -> State waiting")
 				depState = WAITING
 				break
 			}
 			res, err := dep.DepResolved(namespace, name)
 			if err != nil {
-				Info.Println(name, " doesn't exists -> State waiting")
+				Info.Println(dep.GetType(), name, " doesn't exists -> State waiting")
 				depState = WAITING
 				break
 			}
 			if !res {
-				Info.Println(name, dep.GetType(), " is not complete -> State waiting")
+				Info.Println(dep.GetType(), name, " is not ready -> State waiting")
 				depState = WAITING
 				break
 			}
 
-			Info.Println(name, dep.GetType(), " is completed -> State ready")
+			Info.Println(dep.GetType(), name, " is ready -> State ready")
 			depState = READY
 
 		}
@@ -90,15 +92,16 @@ func ExecuteCommand(command []string) error {
 	return nil
 }
 
-func GetEnv(env string, s ...string) (out []string) {
+func ConvertEnvToList(env string, s ...string) (out []string) {
 	sep := ","
 	if len(s) > 0 {
 		sep = s[0]
 	}
-	out = strings.Split(os.Getenv(env), sep)
-	if len(out) == 0 || out[0] == "" {
+	environ := os.Getenv(env)
+	if environ == "" {
 		return nil
 	}
+	out = strings.Split(environ, sep)
 	return out
 }
 
@@ -112,30 +115,25 @@ func main() {
 	//Set Logger
 	InitLogger(os.Stdout, os.Stderr)
 	//Those envs should be set as DownwardAPI http://kubernetes.io/docs/user-guide/downward-api/
-	namespace := GetEnv("NAMESPACE")[0]
+	namespace := os.Getenv("NAMESPACE")
 	if namespace == "" {
 		Error.Println(fmt.Errorf("Environment variable NAMESPACE is empty"))
 		os.Exit(1)
 	}
 
 	// Inside k8s POD we need to initialise client with such function
-	c, err := client.NewInCluster()
+	// c, err := client.NewInCluster()
 	// For testing purposes uncomment following section and comment out above and fill Host property
-	// config := &restclient.Config{
-	// 	Host: "http://127.0.0.1:8080",
-	// }
-	// c, err := client.New(config)
+	config := &restclient.Config{
+		Host: "http://10.91.96.87:8080",
+	}
+	c, err := client.New(config)
 
 	if err != nil {
 		Error.Println(err)
 		os.Exit(1)
 	}
-
-	if err != nil {
-		Error.Println(err)
-		os.Exit(1)
-	}
-	jobs := GetEnv("JOBS")
+	jobs := ConvertEnvToList("JOBS")
 	if jobs != nil {
 		j := job{c}
 		err = WaitFor(j, namespace, jobs)
@@ -143,9 +141,11 @@ func main() {
 			Error.Println(err)
 			os.Exit(1)
 		}
+	} else {
+		Info.Println("No job dependency")
 	}
 
-	services := GetEnv("SERVICES")
+	services := ConvertEnvToList("SERVICES")
 	if services != nil {
 		s := service{c}
 		err = WaitFor(s, namespace, services)
@@ -153,8 +153,32 @@ func main() {
 			Error.Println(err)
 			os.Exit(1)
 		}
+	} else {
+		Info.Println("No service dependency")
 	}
 
+	daemons := ConvertEnvToList("DS")
+	if daemons != nil {
+		d := daemonset{c}
+		err := WaitFor(d, namespace, daemons)
+		if err != nil {
+			Error.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		Info.Println("No daemonset dependency")
+	}
+	containers := ConvertEnvToList("CONTAINERS")
+	if containers != nil {
+		con := container{c}
+		err := WaitFor(con, namespace, containers)
+		if err != nil {
+			Error.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		Info.Println("No container dependency")
+	}
 	conf, err := NewConfig()
 	if err != nil {
 		Error.Println(err)
@@ -165,7 +189,7 @@ func main() {
 		Error.Println(err)
 		os.Exit(1)
 	}
-	command := GetEnv("COMMAND", " ")
+	command := ConvertEnvToList("COMMAND", " ")
 	err = ExecuteCommand(command)
 	if err != nil {
 		Error.Println(err)
