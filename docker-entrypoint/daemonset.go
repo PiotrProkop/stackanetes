@@ -4,6 +4,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	labels "k8s.io/kubernetes/pkg/labels"
+	"os"
 )
 
 type daemonset struct {
@@ -27,8 +28,12 @@ func (d daemonset) DepResolved(namespace string, name string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	host, err := d.GetHost(namespace, os.Getenv("POD_NAME"))
+	if err != nil {
+		return false, err
+	}
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == RUNNING {
+		if pod.Status.Phase == RUNNING && pod.Status.HostIP == host {
 			return true, nil
 		}
 
@@ -48,4 +53,15 @@ func (d daemonset) GetDsPodsList(namespace string, name string) (*api.PodList, e
 		return nil, err
 	}
 	return pods, nil
+}
+
+func (d daemonset) GetHost(namespace string, name string) (host string, err error) {
+	pod, err := d.c.Pods(namespace).Get(name)
+	if err != nil {
+		return "", err
+	}
+	host = pod.Status.HostIP
+
+	return host, nil
+
 }

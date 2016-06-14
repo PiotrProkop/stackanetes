@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	//For testing purposes
-	"k8s.io/kubernetes/pkg/client/restclient"
+	//"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -122,12 +122,12 @@ func main() {
 	}
 
 	// Inside k8s POD we need to initialise client with such function
-	// c, err := client.NewInCluster()
+	c, err := client.NewInCluster()
 	// For testing purposes uncomment following section and comment out above and fill Host property
-	config := &restclient.Config{
-		Host: "http://10.91.96.87:8080",
-	}
-	c, err := client.New(config)
+	//config := &restclient.Config{
+	//	Host: "http://127.0.0.1:8080",
+	//}
+	//c, err := client.New(config)
 
 	if err != nil {
 		Error.Println(err)
@@ -190,9 +190,14 @@ func main() {
 		os.Exit(1)
 	}
 	command := ConvertEnvToList("COMMAND", " ")
-	err = ExecuteCommand(command)
-	if err != nil {
-		Error.Println(err)
+	if command != nil {
+		err = ExecuteCommand(command)
+		if err != nil {
+			Error.Println(err)
+			os.Exit(1)
+		}
+	} else {
+		Error.Println("No COMMAND specified")
 		os.Exit(1)
 	}
 

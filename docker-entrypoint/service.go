@@ -23,8 +23,8 @@ func (s service) DepResolved(namespace string, name string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if len(e.Subsets) == 0 {
-		return false, nil
+	if len(e.Subsets) > 0 {
+		return true, nil
 	}
-	return true, nil
+	return false, nil
 }
