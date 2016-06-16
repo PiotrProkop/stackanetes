@@ -7,15 +7,18 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 	//For testing purposes
 	//"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
-	WAITING = "waiting"
-	READY   = "ready"
-	RUNNING = "Running"
+	WAITING  = "waiting"
+	READY    = "ready"
+	RUNNING  = "Running"
+	INTERVAL = 2
 )
 
 var (
@@ -41,7 +44,8 @@ func WaitFor(dep dependency, namespace string, names []string) error {
 	for depState == WAITING {
 
 		for _, name := range names {
-
+			//Sleep before next request
+			time.Sleep(INTERVAL * time.Second)
 			name := strings.TrimSpace(name)
 			err := dep.Exists(namespace, name)
 			if err != nil {
@@ -122,12 +126,12 @@ func main() {
 	}
 
 	// Inside k8s POD we need to initialise client with such function
-	c, err := client.NewInCluster()
+	// c, err := client.NewInCluster()
 	// For testing purposes uncomment following section and comment out above and fill Host property
-	//config := &restclient.Config{
-	//	Host: "http://127.0.0.1:8080",
-	//}
-	//c, err := client.New(config)
+	config := &restclient.Config{
+		Host: "http://10.91.96.87:8080",
+	}
+	c, err := client.New(config)
 
 	if err != nil {
 		Error.Println(err)
