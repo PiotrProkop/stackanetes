@@ -27,7 +27,7 @@ def env(*args, **kwargs):
     return kwargs.get('default', '')
 
 
-def get_kubectl_command():
+def get_kubectl_command(add_namespace=True):
     cmd = [CONF.stackanetes.kubectl_path]
     if CONF.stackanetes.host:
         server = "--server=" + CONF.stackanetes.host
@@ -38,6 +38,11 @@ def get_kubectl_command():
     if CONF.stackanetes.context:
         context = "--context=" + CONF.stackanetes.context
         cmd.append(context)
+    if add_namespace and CONF.stackanetes.namespace:
+        namespace = "--namespace=" + CONF.stackanetes.namespace
+        cmd.append(namespace)
+
+
 
     return cmd
 
@@ -49,7 +54,7 @@ def create_namespace(namespace):
 
 
 def check_if_namespace_exist(namespace):
-    cmd = get_kubectl_command()
+    cmd = get_kubectl_command(add_namespace=False)
     cmd.extend(['get', 'namespace', namespace])
     output = subprocess.Popen(cmd,
                               stdout=subprocess.PIPE).communicate()[0]
