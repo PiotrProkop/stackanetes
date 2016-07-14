@@ -18,11 +18,7 @@ import (
 
 func main() {
 	entrypoint := entry.NewEntrypoint()
-	err := entrypoint.Resolve()
-	if err != nil {
-		logger.Error.Printf("Failed to resolve dependecy: %v", err)
-		os.Exit(1)
-	}
+	entrypoint.Resolve()
 	command := os.Getenv("COMMAND")
 	if command == "" {
 		logger.Error.Printf("COMMAND env is empty")

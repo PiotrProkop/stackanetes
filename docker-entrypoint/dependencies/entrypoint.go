@@ -2,7 +2,7 @@ package entrypoint
 
 import (
 	"github.com/stackanetes/docker-entrypoint/logger"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	//	"k8s.io/kubernetes/pkg/client/restclient"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"os"
 	"sync"
@@ -25,11 +25,11 @@ type Entrypoint struct {
 //Constructor for entrypoint
 func NewEntrypoint() (entry Entrypoint) {
 	var err error
-	//entry.Client, err = client.NewInCluster()
-	config := &restclient.Config{
-		Host: "http://10.91.96.110:8080",
-	}
-	entry.Client, err = client.New(config)
+	entry.Client, err = client.NewInCluster()
+	//config := &restclient.Config{
+	//	Host: "http://127.0.0.1:8080",
+	//}
+	//	entry.Client, err = client.New(config)
 	if err != nil {
 		logger.Error.Printf("Creating client failed:%v", err)
 		os.Exit(1)
@@ -42,7 +42,7 @@ func NewEntrypoint() (entry Entrypoint) {
 	return entry
 }
 
-func (e Entrypoint) Resolve() error {
+func (e Entrypoint) Resolve() {
 	for _, dep := range Dependencies {
 		wg.Add(1)
 		go func(dep Resolver) {
@@ -62,7 +62,6 @@ func (e Entrypoint) Resolve() error {
 		}(dep)
 	}
 	wg.Wait()
-	return nil
 
 }
 
