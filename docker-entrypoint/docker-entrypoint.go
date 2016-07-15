@@ -16,6 +16,7 @@ import (
 	_ "github.com/stackanetes/docker-entrypoint/dependencies/daemonset"
 	_ "github.com/stackanetes/docker-entrypoint/dependencies/job"
 	_ "github.com/stackanetes/docker-entrypoint/dependencies/service"
+	_ "github.com/stackanetes/docker-entrypoint/dependencies/socket"
 )
 
 func main() {
