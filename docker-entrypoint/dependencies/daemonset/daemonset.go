@@ -29,7 +29,7 @@ func NewDaemonset(name string) Daemonset {
 	return Daemonset{name: name}
 }
 
-func (d Daemonset) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
+func (d Daemonset) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	daemonset, err := entrypoint.Client.ExtensionsClient.DaemonSets(entrypoint.Namespace).Get(d.name)
 	if err != nil {
 		return false, err

@@ -23,7 +23,8 @@ type Entrypoint struct {
 }
 
 //Constructor for entrypoint
-func NewEntrypoint(client *cl.Client) (entry Entrypoint, err error) {
+func NewEntrypoint(client *cl.Client) (entry *Entrypoint, err error) {
+	entry = new(Entrypoint)
 	if entry.Client = client; client == nil {
 		if entry.Client, err = cl.NewInCluster(); err != nil {
 			err = fmt.Errorf("Error while creating k8s client: %s", err)
@@ -37,7 +38,7 @@ func NewEntrypoint(client *cl.Client) (entry Entrypoint, err error) {
 	return entry, err
 }
 
-func (e Entrypoint) Resolve() {
+func (e *Entrypoint) Resolve() {
 	var wg sync.WaitGroup
 	for _, dep := range dependencies {
 		wg.Add(1)
@@ -62,7 +63,7 @@ func (e Entrypoint) Resolve() {
 
 type Resolver interface {
 	//	GetType() string
-	IsResolved(entrypoint Entrypoint) (bool, error)
+	IsResolved(entrypoint *Entrypoint) (bool, error)
 	GetName() string
 }
 

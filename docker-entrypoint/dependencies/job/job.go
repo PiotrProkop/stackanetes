@@ -26,7 +26,7 @@ func NewJob(name string) Job {
 
 }
 
-func (j Job) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
+func (j Job) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	job, err := entrypoint.Client.ExtensionsClient.Jobs(entrypoint.Namespace).Get(j.name)
 	if err != nil {
 		return false, err

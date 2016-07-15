@@ -26,7 +26,7 @@ func NewContainer(name string) Container {
 
 }
 
-func (c Container) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
+func (c Container) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	myPodName := os.Getenv("POD_NAME")
 	if myPodName == "" {
 		return false, fmt.Errorf("Environment variable POD_NAME not set")

@@ -25,7 +25,7 @@ func NewService(name string) Service {
 
 }
 
-func (s Service) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
+func (s Service) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	e, err := entrypoint.Client.Endpoints(entrypoint.Namespace).Get(s.GetName())
 	if err != nil {
 		return false, err

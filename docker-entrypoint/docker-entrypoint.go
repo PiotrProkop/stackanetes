@@ -8,7 +8,7 @@ import (
 	"github.com/stackanetes/docker-entrypoint/logger"
 	comm "github.com/stackanetes/docker-entrypoint/util/command"
 	"github.com/stackanetes/docker-entrypoint/util/env"
-	"k8s.io/kubernetes/pkg/client/restclient"
+	//"k8s.io/kubernetes/pkg/client/restclient"
 	cl "k8s.io/kubernetes/pkg/client/unversioned"
 	//Register resolvers
 	_ "github.com/stackanetes/docker-entrypoint/dependencies/config"
@@ -22,21 +22,14 @@ import (
 func main() {
 	var client *cl.Client
 	var command []string
-	var entrypoint entry.Entrypoint
+	var entrypoint *entry.Entrypoint
 	var err error
 
-	config := &restclient.Config{
-		Host: "http://10.91.96.110:8080",
-	}
-	if client, err = cl.New(config); err != nil {
-		logger.Error.Printf("Creating client failed:%v", err)
-		os.Exit(1)
-	}
 	if entrypoint, err = entry.NewEntrypoint(client); err != nil {
 		logger.Error.Printf("Creating entrypoint failed: %v", err)
 		os.Exit(1)
 	}
-
+	logger.Info.Print("Dupa")
 	entrypoint.Resolve()
 
 	if command = env.SplitEnvToList("COMMAND", " "); len(command) == 0 {

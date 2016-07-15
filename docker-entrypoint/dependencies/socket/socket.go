@@ -29,7 +29,7 @@ func (s Socket) GetName() string {
 	return s.name
 }
 
-func (s Socket) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
+func (s Socket) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	_, err := os.Stat(s.GetName())
 	if err == nil {
 		return true, nil

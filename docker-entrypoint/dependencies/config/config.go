@@ -64,7 +64,7 @@ func NewConfig(name string) Config {
 	return config
 }
 
-func (c Config) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
+func (c Config) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	logger.Info.Print(c.GetName())
 	err := CreateDirectory(c.GetName())
 	if err != nil {
