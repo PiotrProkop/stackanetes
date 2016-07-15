@@ -12,21 +12,22 @@ type Job struct {
 }
 
 func init() {
-	jobsDeps := env.SplitEnvToList(fmt.Sprintf("%sJOBS", entry.DependencyPrefix))
-	if jobsDeps != nil {
-		for dep := range jobsDeps {
-			entry.Register(NewJob(jobsDeps[dep]))
+	jobsEnv := fmt.Sprintf("%sJOBS", entry.DependencyPrefix)
+	var jobsDeps []string
+	if jobsDeps = env.SplitEnvToList(jobsEnv); len(jobsDeps) > 0 {
+		for _, dep := range jobsDeps {
+			entry.Register(NewJob(dep))
 		}
 	}
 }
 
-func NewJob(name string) (s Job) {
-	job := Job{name: name}
-	return job
+func NewJob(name string) Job {
+	return Job{name: name}
+
 }
 
 func (j Job) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
-	job, err := entrypoint.Client.ExtensionsClient.Jobs(entry.Namespace).Get(j.name)
+	job, err := entrypoint.Client.ExtensionsClient.Jobs(entrypoint.Namespace).Get(j.name)
 	if err != nil {
 		return false, err
 	}

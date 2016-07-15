@@ -11,21 +11,22 @@ type Service struct {
 }
 
 func init() {
-	serviceDeps := env.SplitEnvToList(fmt.Sprintf("%sSERVICE", entry.DependencyPrefix))
-	if serviceDeps != nil {
-		for dep := range serviceDeps {
-			entry.Register(NewService(serviceDeps[dep]))
+	serviceEnv := fmt.Sprintf("%sSERVICE", entry.DependencyPrefix)
+	var serviceDeps []string
+	if serviceDeps = env.SplitEnvToList(serviceEnv); len(serviceDeps) > 0 {
+		for _, dep := range serviceDeps {
+			entry.Register(NewService(dep))
 		}
 	}
 }
 
-func NewService(name string) (s Service) {
-	service := Service{name: name}
-	return service
+func NewService(name string) Service {
+	return Service{name: name}
+
 }
 
 func (s Service) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
-	e, err := entrypoint.Client.Endpoints(entry.Namespace).Get(s.name)
+	e, err := entrypoint.Client.Endpoints(entrypoint.Namespace).Get(s.GetName())
 	if err != nil {
 		return false, err
 	}

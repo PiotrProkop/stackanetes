@@ -16,27 +16,27 @@ type Daemonset struct {
 }
 
 func init() {
-	daemonsetsDeps := env.SplitEnvToList(fmt.Sprintf("%sDAEMONSET", entry.DependencyPrefix))
-	if daemonsetsDeps != nil {
-		for dep := range daemonsetsDeps {
-			entry.Register(NewDaemonset(daemonsetsDeps[dep]))
+	daemonsetEnv := fmt.Sprintf("%sDAEMONSET", entry.DependencyPrefix)
+	var daemonsetsDeps []string
+	if daemonsetsDeps = env.SplitEnvToList(daemonsetEnv); daemonsetsDeps != nil {
+		for _, dep := range daemonsetsDeps {
+			entry.Register(NewDaemonset(dep))
 		}
 	}
 }
 
-func NewDaemonset(name string) (d Daemonset) {
-	daemonset := Daemonset{name: name}
-	return daemonset
+func NewDaemonset(name string) Daemonset {
+	return Daemonset{name: name}
 }
 
 func (d Daemonset) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
-	daemonset, err := entrypoint.Client.ExtensionsClient.DaemonSets(entry.Namespace).Get(d.name)
+	daemonset, err := entrypoint.Client.ExtensionsClient.DaemonSets(entrypoint.Namespace).Get(d.name)
 	if err != nil {
 		return false, err
 	}
 	label := labels.SelectorFromSet(daemonset.Spec.Selector.MatchLabels)
 	opts := api.ListOptions{LabelSelector: label}
-	pods, err := entrypoint.Client.Pods(entry.Namespace).List(opts)
+	pods, err := entrypoint.Client.Pods(entrypoint.Namespace).List(opts)
 	if err != nil {
 		return false, err
 	}
@@ -46,7 +46,7 @@ func (d Daemonset) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
 		os.Exit(1)
 
 	}
-	myPod, err := entrypoint.Client.Pods(entry.Namespace).Get(myPodName)
+	myPod, err := entrypoint.Client.Pods(entrypoint.Namespace).Get(myPodName)
 	if err != nil {
 		logger.Error.Printf("Getting POD: %v failed : %v", myPodName, err)
 		os.Exit(1)
@@ -54,7 +54,7 @@ func (d Daemonset) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
 	myHost := myPod.Status.HostIP
 
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == "Running" && pod.Status.HostIP == myHost {
+		if pod.Status.Phase == api.PodRunning && pod.Status.HostIP == myHost {
 			return true, nil
 		} else if pod.Status.HostIP != myHost {
 			return false, fmt.Errorf("Hostname mismatch: Daemonset %v is on host %v and Pod %v is on host %v", d.name, pod.Status.HostIP, myPodName, myHost)

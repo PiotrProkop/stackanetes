@@ -3,60 +3,55 @@ package entrypoint
 import (
 	"github.com/stackanetes/docker-entrypoint/logger"
 	//	"k8s.io/kubernetes/pkg/client/restclient"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"fmt"
+	cl "k8s.io/kubernetes/pkg/client/unversioned"
 	"os"
 	"sync"
 	"time"
 )
 
-var (
-	Dependencies     []Resolver      // List containing all dependencies to be resolved
+var dependencies []Resolver // List containing all dependencies to be resolved
+const (
 	DependencyPrefix = "DEPENDENCY_" //Prefix for env variables
-	Namespace        string          //Namespace for containers
-	wg               sync.WaitGroup
-	INTERVAL         = 2
+	interval         = 2
 )
 
 // Object containing k8s client
 type Entrypoint struct {
-	Client *client.Client
+	Client    *cl.Client
+	Namespace string
 }
 
 //Constructor for entrypoint
-func NewEntrypoint() (entry Entrypoint) {
-	var err error
-	entry.Client, err = client.NewInCluster()
-	//config := &restclient.Config{
-	//	Host: "http://127.0.0.1:8080",
-	//}
-	//	entry.Client, err = client.New(config)
-	if err != nil {
-		logger.Error.Printf("Creating client failed:%v", err)
-		os.Exit(1)
+func NewEntrypoint(client *cl.Client) (entry Entrypoint, err error) {
+	if entry.Client = client; client == nil {
+		if entry.Client, err = cl.NewInCluster(); err != nil {
+			err = fmt.Errorf("Error while creating k8s client: %s", err)
+			return entry, err
+		}
 	}
-	Namespace = os.Getenv("NAMESPACE")
-	if Namespace == "" {
-		logger.Error.Print("NAMESPACE env not set")
-		os.Exit(1)
+	if entry.Namespace = os.Getenv("NAMESPACE"); entry.Namespace == "" {
+		logger.Warning.Print("NAMESPACE env not set, using default")
+		entry.Namespace = "default"
 	}
-	return entry
+	return entry, err
 }
 
 func (e Entrypoint) Resolve() {
-	for _, dep := range Dependencies {
+	var wg sync.WaitGroup
+	for _, dep := range dependencies {
 		wg.Add(1)
 		go func(dep Resolver) {
+			defer wg.Done()
 			logger.Info.Printf("Resolving %s", dep.GetName())
 			var err error
 			status := false
 			for status == false {
-				status, err = dep.IsResolved(e)
-				if err != nil {
+				if status, err = dep.IsResolved(e); err != nil {
 					logger.Warning.Printf("Resolving dependency for %v failed: %v", dep.GetName(), err)
 				}
-				time.Sleep(2 * time.Second)
+				time.Sleep(interval * time.Second)
 			}
-			wg.Done()
 			logger.Info.Printf("Dependency %v is resolved", dep.GetName())
 
 		}(dep)
@@ -73,8 +68,7 @@ type Resolver interface {
 
 func Register(res Resolver) {
 	if res == nil {
-		logger.Error.Printf("resolver: could not register nil Resolvable")
-		os.Exit(1)
+		panic("Entrypoint: could not register nil Resolver")
 	}
-	Dependencies = append(Dependencies, res)
+	dependencies = append(dependencies, res)
 }

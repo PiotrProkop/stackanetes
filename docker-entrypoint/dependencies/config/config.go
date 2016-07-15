@@ -24,15 +24,16 @@ type Config struct {
 }
 
 func init() {
-	configDeps := env.SplitEnvToList(fmt.Sprintf("%sCONFIG", entry.DependencyPrefix))
-	if configDeps != nil {
-		for dep := range configDeps {
-			entry.Register(NewConfig(configDeps[dep]))
+	configEnv := fmt.Sprintf("%sCONFIG", entry.DependencyPrefix)
+	var configDeps []string
+	if configDeps = env.SplitEnvToList(configEnv); len(configDeps) > 0 {
+		for _, dep := range configDeps {
+			entry.Register(NewConfig(dep))
 		}
 	}
 }
 
-func NewConfig(name string) (c Config) {
+func NewConfig(name string) Config {
 	var config Config
 	config.name = name
 	iface := os.Getenv("INTERFACE_NAME")
@@ -75,8 +76,7 @@ func (c Config) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
 	}
 	file := filepath.Base(c.GetName())
 	temp := template.Must(template.New(file).ParseFiles(fmt.Sprintf("/configmaps/%s/%s", file, file)))
-	err = temp.Execute(config, c.params)
-	if err != nil {
+	if err = temp.Execute(config, c.params); err != nil {
 		return false, err
 	}
 	return true, nil

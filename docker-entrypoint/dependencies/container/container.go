@@ -4,6 +4,7 @@ import (
 	"fmt"
 	entry "github.com/stackanetes/docker-entrypoint/dependencies"
 	"github.com/stackanetes/docker-entrypoint/util/env"
+	"os"
 )
 
 type Container struct {
@@ -11,17 +12,18 @@ type Container struct {
 }
 
 func init() {
-	containerDeps := env.SplitEnvToList(fmt.Sprintf("%sCONTAINER", entry.DependencyPrefix))
-	if containerDeps != nil {
-		for dep := range containerDeps {
-			entry.Register(NewContainer(containerDeps[dep]))
+	containerEnv := fmt.Sprintf("%sCONTAINER", entry.DependencyPrefix)
+	var containerDeps []string
+	if containerDeps = env.SplitEnvToList(containerEnv); len(containerDeps) > 0 {
+		for _, dep := range containerDeps {
+			entry.Register(NewContainer(dep))
 		}
 	}
 }
 
-func NewContainer(name string) (s Container) {
-	container := Container{name: name}
-	return container
+func NewContainer(name string) Container {
+	return Container{name: name}
+
 }
 
 func (c Container) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
@@ -29,13 +31,13 @@ func (c Container) IsResolved(entrypoint entry.Entrypoint) (bool, error) {
 	if myPodName == "" {
 		return false, fmt.Errorf("Environment variable POD_NAME not set")
 	}
-	pod, err := entrypoint.Client.Pods(entry.Namespace).Get(c.name)
+	pod, err := entrypoint.Client.Pods(entrypoint.Namespace).Get(myPodName)
 	if err != nil {
 		return false, err
 	}
 	containers := pod.Status.ContainerStatuses
 	for _, container := range containers {
-		if container.Name && container.State.Running != nil {
+		if container.Name == c.GetName() && container.State.Running != nil {
 			return true, nil
 		}
 	}

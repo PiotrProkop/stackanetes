@@ -12,7 +12,7 @@ func SplitEnvToList(env string, s ...string) (envList []string) {
 	}
 	e := os.Getenv(env)
 	if e == "" {
-		return nil
+		return envList
 	}
 
 	envList = strings.Split(e, separator)
