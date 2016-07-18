@@ -29,7 +29,6 @@ func main() {
 		logger.Error.Printf("Creating entrypoint failed: %v", err)
 		os.Exit(1)
 	}
-	logger.Info.Print("Dupa")
 	entrypoint.Resolve()
 
 	if command = env.SplitEnvToList("COMMAND", " "); len(command) == 0 {
