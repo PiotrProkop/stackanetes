@@ -53,16 +53,35 @@ func (d Daemonset) IsResolved(entrypoint *entry.Entrypoint) (bool, error) {
 	myHost := myPod.Status.HostIP
 
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == api.PodRunning && pod.Status.HostIP == myHost {
-			return true, nil
-		} else if pod.Status.HostIP != myHost {
-			return false, fmt.Errorf("Hostname mismatch: Daemonset %v is on host %v and Pod %v is on host %v", d.name, pod.Status.HostIP, myPodName, myHost)
+		if !podReady(&pod) {
+			return false, fmt.Errorf("Pod %v of daemonset %v is not ready", pod.Name, d.GetName())
 		}
 
 	}
-	return false, nil
+	if !isPodOnHost(pods.Items, myHost) {
+		return false, fmt.Errorf("Hostname mismatch: Daemonset %v is not on the same host as Pod %v", d.GetName(), myPodName)
+	}
+	return true, nil
 }
 
 func (d Daemonset) GetName() string {
 	return d.name
+}
+
+func podReady(pod *api.Pod) bool {
+	for _, cond := range pod.Status.Conditions {
+		if cond.Type == api.PodReady && cond.Status == api.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func isPodOnHost(podList []api.Pod, hostIP string) bool {
+	for _, pod := range podList {
+		if pod.Status.HostIP == hostIP {
+			return true
+		}
+	}
+	return false
 }
