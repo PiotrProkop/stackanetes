@@ -13,8 +13,7 @@ type Socket struct {
 
 func init() {
 	socketEnv := fmt.Sprintf("%sSOCKET", entry.DependencyPrefix)
-	var socketDeps []string
-	if socketDeps = env.SplitEnvToList(socketEnv); len(socketDeps) > 0 {
+	if socketDeps := env.SplitEnvToList(socketEnv); len(socketDeps) > 0 {
 		for _, dep := range socketDeps {
 			entry.Register(NewSocket(dep))
 		}

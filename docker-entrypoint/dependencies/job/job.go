@@ -13,8 +13,7 @@ type Job struct {
 
 func init() {
 	jobsEnv := fmt.Sprintf("%sJOBS", entry.DependencyPrefix)
-	var jobsDeps []string
-	if jobsDeps = env.SplitEnvToList(jobsEnv); len(jobsDeps) > 0 {
+	if jobsDeps := env.SplitEnvToList(jobsEnv); len(jobsDeps) > 0 {
 		for _, dep := range jobsDeps {
 			entry.Register(NewJob(dep))
 		}

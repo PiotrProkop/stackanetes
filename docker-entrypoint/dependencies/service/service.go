@@ -12,8 +12,7 @@ type Service struct {
 
 func init() {
 	serviceEnv := fmt.Sprintf("%sSERVICE", entry.DependencyPrefix)
-	var serviceDeps []string
-	if serviceDeps = env.SplitEnvToList(serviceEnv); len(serviceDeps) > 0 {
+	if serviceDeps := env.SplitEnvToList(serviceEnv); len(serviceDeps) > 0 {
 		for _, dep := range serviceDeps {
 			entry.Register(NewService(dep))
 		}

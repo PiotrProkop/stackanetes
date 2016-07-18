@@ -25,8 +25,7 @@ type Config struct {
 
 func init() {
 	configEnv := fmt.Sprintf("%sCONFIG", entry.DependencyPrefix)
-	var configDeps []string
-	if configDeps = env.SplitEnvToList(configEnv); len(configDeps) > 0 {
+	if configDeps := env.SplitEnvToList(configEnv); len(configDeps) > 0 {
 		for _, dep := range configDeps {
 			entry.Register(NewConfig(dep))
 		}

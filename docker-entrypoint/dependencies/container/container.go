@@ -13,8 +13,7 @@ type Container struct {
 
 func init() {
 	containerEnv := fmt.Sprintf("%sCONTAINER", entry.DependencyPrefix)
-	var containerDeps []string
-	if containerDeps = env.SplitEnvToList(containerEnv); len(containerDeps) > 0 {
+	if containerDeps := env.SplitEnvToList(containerEnv); len(containerDeps) > 0 {
 		for _, dep := range containerDeps {
 			entry.Register(NewContainer(dep))
 		}

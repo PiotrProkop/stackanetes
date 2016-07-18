@@ -17,8 +17,7 @@ type Daemonset struct {
 
 func init() {
 	daemonsetEnv := fmt.Sprintf("%sDAEMONSET", entry.DependencyPrefix)
-	var daemonsetsDeps []string
-	if daemonsetsDeps = env.SplitEnvToList(daemonsetEnv); daemonsetsDeps != nil {
+	if daemonsetsDeps := env.SplitEnvToList(daemonsetEnv); daemonsetsDeps != nil {
 		for _, dep := range daemonsetsDeps {
 			entry.Register(NewDaemonset(dep))
 		}
