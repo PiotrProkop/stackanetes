@@ -1,7 +1,7 @@
 type: generic/daemonset
 name: openvswitch-agent
-host_network: True
-label: openstack-compute-node
+host_network: none
+label: dupa
 ports: []
 dependencies:
   service:
@@ -40,6 +40,11 @@ containers:
         container_path: /etc
         templates:
         - common/templates/resolv.conf.j2
+      - file_name: hosts
+        configmap_name: hosts
+        container_path: /etc
+        templates:
+        - neutron/templates/hosts.j2
     mounts:
       - container_path: /lib/modules
         name: lib-modules

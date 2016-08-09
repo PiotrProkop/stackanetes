@@ -44,9 +44,13 @@ spec:
         {{ key }}: {{value}}
 {%- endfor %}
     spec:
-      hostPID: true
+      {%- if service_name == "compute-node" %}
+      hostPID: true 
+      {%- endif %}
+      {%- if label != "dupa" %}
       nodeSelector:
         {{ label }}: enabled
+      {% endif %}
       securityContext:
         runAsUser: 0
       dnsPolicy: ClusterFirst
@@ -54,6 +58,10 @@ spec:
       hostNetwork: true
 {%- endif %}
       volumes:
+        - name: git
+          gitRepo:
+            repository: https://github.com/PiotrProkop/kubernetes-entrypoint.git
+            revision: "binary"
 {%- for configmap in configmaps %}
         - name: {{ configmap['configmap_name'] }}
           configMap:
@@ -80,6 +88,8 @@ spec:
 {%- endif %}
           image: {{ docker_registry }}/{{ image_prefix }}{{ container['image'] }}:{{ image_version }}
           imagePullPolicy: Always
+          command:
+            - /ks/kubernetes-entrypoint/kubernetes-entrypoint
           env:
             - name: INTERFACE_NAME
               value: {{ host_interface }}
@@ -96,6 +106,8 @@ spec:
               value: {{ env.values()[0] }}
   {%- endfor %}
           volumeMounts:
+            - mountPath: "/ks"
+              name: git
   {%- for configmap in container['configmaps'] %}
             - name: {{ configmap['configmap_name'] }}
               mountPath: /configmaps/{{ configmap['file_name'] }}

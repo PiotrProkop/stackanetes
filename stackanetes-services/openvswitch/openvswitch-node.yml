@@ -1,6 +1,6 @@
 type: generic/daemonset
 name: openvswitch-node
-label: openstack-compute-node
+label: dupa
 host_network: True
 ports: []
 dependencies:
@@ -27,6 +27,11 @@ containers:
         container_path: /etc
         templates:
         - common/templates/resolv.conf.j2
+      - file_name: hosts
+        configmap_name: hosts
+        container_path: /etc
+        templates:
+        - neutron/templates/hosts.j2
     mounts:
       - container_path: /run
         name: run
