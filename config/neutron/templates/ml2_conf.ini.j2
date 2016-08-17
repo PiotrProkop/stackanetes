@@ -16,7 +16,8 @@ vni_ranges = 1:1000
 vxlan_group = 239.1.1.1
 
 [securitygroup]
-firewall_driver = neutron.agent.firewall.NoopFirewallDriver
+enable_security_group = False
+firewall_driver = nova
 
 [agent]
 tunnel_types = vxlan
